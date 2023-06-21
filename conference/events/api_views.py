@@ -36,9 +36,13 @@ class ConferenceDetailEncoder(ModelEncoder):
         "ends",
         "created",
         "updated",
+        "state",
     ]
 
-
+    def default(self,o):
+        if hasattr(o, 'as_dict'):
+            return o.as_dict()
+        return super().default(o)
 # class ConferenceDetailEncoder(JSONEncoder):
 #     #create empty dictionary that will hold property names as keys and values
 #     #key value pairs, properties should be in JsonResponse for items in show conference
@@ -56,12 +60,35 @@ class ConferenceDetailEncoder(ModelEncoder):
 #             d[property] = value
 #         return d
 
+class LocationListEncoder(ModelEncoder):
+    model = Location
+    properties = ["name"]
+
+
 class LocationDetailEncoder(ModelEncoder):
     """
     add model type to use common json file
     """
     model = Location
-    properties = ["name", "city"]
+    properties = [
+        "name",
+        "city",
+        "room_count",
+        "created",
+        "updated",
+        # "state",
+    ]
+
+    # def default(self, o):
+    #     if isinstance(o, State):
+    #         return {
+    #             "name": o.name,
+    #             "abbreviation": o.abbreviation,
+    #         }
+    #     return super().default(o)
+    # #in common json else statement
+    #         if hasattr(o, 'as_dict'):
+    #         return o.as_dict()
 
 # class LocationDetailEncoder(JSONEncoder):
 #     properties = ["name", "city"]
@@ -188,16 +215,20 @@ def api_list_locations(request):
     }
     """
 
-    response = []
+    # response = []
     locations = Location.objects.all()
-    for location in locations:
-        response.append(
-            {
-                "name": location.name,
-                "href": location.get_api_url(),
-            }
-        )
-    return JsonResponse({"locations": response})
+    return JsonResponse(
+        {"locations": locations},
+        encoder=LocationListEncoder,
+    )
+    # for location in locations:
+    #     response.append(
+    #         {
+    #             "name": location.name,
+    #             "href": location.get_api_url(),
+    #         }
+    # #     )
+    # return JsonResponse({"locations": response})
 
 
     # locations = [
