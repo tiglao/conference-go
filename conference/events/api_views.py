@@ -2,6 +2,79 @@ from django.http import JsonResponse
 
 from .models import Conference, Location
 
+from common.json import ModelEncoder
+# from json import JSONEncoder
+
+
+#move this to json in common
+# class ModelEncoder(JSONEncoder):
+#     """
+#     Create modelencoder for definition default
+#     """
+#     def default(self, o):
+#         d = {}
+#         for property in self.properties:
+#             value = getattr(o, property)
+#             d[property] = value
+#         return d
+
+class ConferenceListEncoder(ModelEncoder):
+    model = Conference
+    properties = ["name"]
+
+class ConferenceDetailEncoder(ModelEncoder):
+    """
+    add model type to use common json file
+    """
+    model = Conference
+    properties = [
+        "name",
+        "description",
+        "max_presentations",
+        "max_attendees",
+        "starts",
+        "ends",
+        "created",
+        "updated",
+    ]
+
+
+# class ConferenceDetailEncoder(JSONEncoder):
+#     #create empty dictionary that will hold property names as keys and values
+#     #key value pairs, properties should be in JsonResponse for items in show conference
+#     #put in dictionary
+
+#     #getattr
+#     #JSONEncoder
+
+#     properties = ["name", "description"]
+
+#     def default(self, conference):
+#         d = {}
+#         for property in self.properties:
+#             value = getattr(conference, property)
+#             d[property] = value
+#         return d
+
+class LocationDetailEncoder(ModelEncoder):
+    """
+    add model type to use common json file
+    """
+    model = Location
+    properties = ["name", "city"]
+
+# class LocationDetailEncoder(JSONEncoder):
+#     properties = ["name", "city"]
+
+#     def default(self, location):
+#         d = {}
+#         for property in self.properties:
+#             value = getattr(location, property)
+#             d[property] = value
+#         return d
+
+
+
 
 def api_list_conferences(request):
     """
@@ -22,16 +95,24 @@ def api_list_conferences(request):
         ]
     }
     """
-    response = []
+    #change when using model encoder
     conferences = Conference.objects.all()
-    for conference in conferences:
-        response.append(
-            {
-                "name": conference.name,
-                "href": conference.get_api_url(),
-            }
-        )
-    return JsonResponse({"conferences": response})
+    return JsonResponse(
+        {"conferences": conferences},
+        encoder=ConferenceListEncoder,
+    )
+
+
+    # response = []
+    # conferences = Conference.objects.all()
+    # for conference in conferences:
+    #     response.append(
+    #         {
+    #             "name": conference.name,
+    #             "href": conference.get_api_url(),
+    #         }
+    #     )
+    # return JsonResponse({"conferences": response})
 
 
 def api_show_conference(request, id):
@@ -59,23 +140,32 @@ def api_show_conference(request, id):
         }
     }
     """
+
+    #use safe is false because you're not using a dictionary
+
     conference = Conference.objects.get(id=id)
     return JsonResponse(
-        {
-            "name": conference.name,
-            "starts": conference.starts,
-            "ends": conference.ends,
-            "description": conference.description,
-            "created": conference.created,
-            "updated": conference.updated,
-            "max_presentations": conference.max_presentations,
-            "max_attendees": conference.max_attendees,
-            "location": {
-                "name": conference.location.name,
-                "href": conference.location.get_api_url(),
-            },
-        }
+        # {
+        #     "name": conference.name,
+        #     "starts": conference.starts,
+        #     "ends": conference.ends,
+        #     "description": conference.description,
+        #     "created": conference.created,
+        #     "updated": conference.updated,
+        #     "max_presentations": conference.max_presentations,
+        #     "max_attendees": conference.max_attendees,
+        #     "location": {
+        #         "name": conference.location.name,
+        #         "href": conference.location.get_api_url(),
+        #     },
+        # }
+        conference,
+        safe=False,
+        encoder=ConferenceDetailEncoder,
     )
+
+#https://docs.python.org/3/library/json.html json encoder
+
 
 
 def api_list_locations(request):
@@ -138,12 +228,15 @@ def api_show_location(request, id):
     """
     location = Location.objects.get(id=id)
     return JsonResponse(
-        {
-            "name": location.name,
-            "city": location.city,
-            "room_count": location.room_count,
-            "created": location.created,
-            "updated": location.updated,
-            "state": location.state.abbreviation,
-        }
+        # {
+        #     "name": location.name,
+        #     "city": location.city,
+        #     "room_count": location.room_count,
+        #     "created": location.created,
+        #     "updated": location.updated,
+        #     "state": location.state.abbreviation,
+        # }
+        location,
+        safe=False,
+        encoder=LocationDetailEncoder,
     )

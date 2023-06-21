@@ -25,6 +25,15 @@ class Attendee(models.Model):
     def get_api_url(self):
         return reverse("api_show_attendee", kwargs={"id": self.id})
 
+    def create_badge(self):
+        if not hasattr(self, "badge"):
+            badge = Badge.objects.create(attendee=self)
+        #if there's no badge associated with attendee create and save badge instance with self as value for attendee property of bage
+        #if there is badge associated with attendee
+        else:
+            #do nothing
+            pass
+
 
 class Badge(models.Model):
     """
