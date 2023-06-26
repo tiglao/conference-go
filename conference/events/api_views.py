@@ -1,38 +1,17 @@
 from django.http import JsonResponse
-
 from .models import Conference, Location, State
-
 from common.json import ModelEncoder
-# from json import JSONEncoder
-
 from django.views.decorators.http import require_http_methods
-#http method decorator import
-
 import json
-#to use decorator
 
-
-
-#move this to json in common
-# class ModelEncoder(JSONEncoder):
-#     """
-#     Create modelencoder for definition default
-#     """
-#     def default(self, o):
-#         d = {}
-#         for property in self.properties:
-#             value = getattr(o, property)
-#             d[property] = value
-#         return d
+from .acls import grab_image, grab_coordinates, grab_weather
 
 class ConferenceListEncoder(ModelEncoder):
     model = Conference
     properties = ["name"]
 
+
 class ConferenceDetailEncoder(ModelEncoder):
-    """
-    add model type to use common json file
-    """
     model = Conference
     properties = [
         "name",
@@ -44,28 +23,14 @@ class ConferenceDetailEncoder(ModelEncoder):
         "created",
         "updated",
         "state",
+        "weather",
     ]
 
     def default(self,o):
         if hasattr(o, 'as_dict'):
             return o.as_dict()
         return super().default(o)
-# class ConferenceDetailEncoder(JSONEncoder):
-#     #create empty dictionary that will hold property names as keys and values
-#     #key value pairs, properties should be in JsonResponse for items in show conference
-#     #put in dictionary
 
-#     #getattr
-#     #JSONEncoder
-
-#     properties = ["name", "description"]
-
-#     def default(self, conference):
-#         d = {}
-#         for property in self.properties:
-#             value = getattr(conference, property)
-#             d[property] = value
-#         return d
 
 class LocationListEncoder(ModelEncoder):
     model = Location
@@ -73,9 +38,6 @@ class LocationListEncoder(ModelEncoder):
 
 
 class LocationDetailEncoder(ModelEncoder):
-    """
-    add model type to use common json file
-    """
     model = Location
     properties = [
         "name",
@@ -84,125 +46,46 @@ class LocationDetailEncoder(ModelEncoder):
         "created",
         "updated",
         # "state",
+        "image_url",
     ]
 
-    # def default(self, o):
-    #     if isinstance(o, State):
-    #         return {
-    #             "name": o.name,
-    #             "abbreviation": o.abbreviation,
-    #         }
-    #     return super().default(o)
-    # #in common json else statement
-    #         if hasattr(o, 'as_dict'):
-    #         return o.as_dict()
 
-# class LocationDetailEncoder(JSONEncoder):
-#     properties = ["name", "city"]
-
-#     def default(self, location):
-#         d = {}
-#         for property in self.properties:
-#             value = getattr(location, property)
-#             d[property] = value
-#         return d
-
-
-
-
+@require_http_methods(["GET", "POST"])
 def api_list_conferences(request):
-    """
-    Lists the conference names and the link to the conference.
-
-    Returns a dictionary with a single key "conferences" which
-    is a list of conference names and URLS. Each entry in the list
-    is a dictionary that contains the name of the conference and
-    the link to the conference's information.
-
-    {
-        "conferences": [
-            {
-                "name": conference's name,
-                "href": URL to the conference,
-            },
-            ...
-        ]
-    }
-    """
-    #change when using model encoder
-    conferences = Conference.objects.all()
-    return JsonResponse(
-        {"conferences": conferences},
-        encoder=ConferenceListEncoder,
-    )
+    if request.method == "GET":
+        conferences = Conference.objects.all()
+        return JsonResponse(
+            {"conferences": conferences},
+            encoder=ConferenceListEncoder,
+        )
+    else:
+        content = json.loads(request.body)
+        conference = Conference.objects.create(**content)
+        return JsonResponse(
+            conference,
+            encoder=ConferenceDetailEncoder,
+            safe=False,
+        )
 
 
-    # response = []
-    # conferences = Conference.objects.all()
-    # for conference in conferences:
-    #     response.append(
-    #         {
-    #             "name": conference.name,
-    #             "href": conference.get_api_url(),
-    #         }
-    #     )
-    # return JsonResponse({"conferences": response})
-
-
+@require_http_methods(["GET", "PUT", "DELETE"])
 def api_show_conference(request, id):
-    """
-    Returns the details for the Conference model specified
-    by the id parameter.
-
-    This should return a dictionary with the name, starts,
-    ends, description, created, updated, max_presentations,
-    max_attendees, and a dictionary for the location containing
-    its name and href.
-
-    {
-        "name": the conference's name,
-        "starts": the date/time when the conference starts,
-        "ends": the date/time when the conference ends,
-        "description": the description of the conference,
-        "created": the date/time when the record was created,
-        "updated": the date/time when the record was updated,
-        "max_presentations": the maximum number of presentations,
-        "max_attendees": the maximum number of attendees,
-        "location": {
-            "name": the name of the location,
-            "href": the URL for the location,
-        }
-    }
-    """
-
-    #use safe is false because you're not using a dictionary
-
-    conference = Conference.objects.get(id=id)
-    return JsonResponse(
-        # {
-        #     "name": conference.name,
-        #     "starts": conference.starts,
-        #     "ends": conference.ends,
-        #     "description": conference.description,
-        #     "created": conference.created,
-        #     "updated": conference.updated,
-        #     "max_presentations": conference.max_presentations,
-        #     "max_attendees": conference.max_attendees,
-        #     "location": {
-        #         "name": conference.location.name,
-        #         "href": conference.location.get_api_url(),
-        #     },
-        # }
-        conference,
-        safe=False,
-        encoder=ConferenceDetailEncoder,
-    )
-
-#https://docs.python.org/3/library/json.html json encoder
+    if request.method == "GET":
+        conference = Conference.objects.get(id=id)
+        lat = grab_coordinates(Location.city, Location.state)
+        lon = grab_coordinates(Location.city, Location.state)
+        conference.weather = grab_weather(lat, lon)
+        # print(conference.weather)
+    #     conference.update(weather)
+        return JsonResponse(
+            conference,
+            safe=False,
+            encoder=ConferenceDetailEncoder,
+        )
+    elif request.method == "DELETE":
+        count, _ = Conference.objects.filter(id=id)
 
 
-
-#with decorator
 @require_http_methods(["GET", "POST"])
 def api_list_locations(request):
     if request.method == "GET":
@@ -213,9 +96,16 @@ def api_list_locations(request):
         )
     else:
         content = json.loads(request.body)
-        state = State.objects.get(abbreviation=content["state"])
-        content["state"] = state
-
+        try:
+            state = State.objects.get(abbreviation=content["state"])
+            content["state"] = state
+        except State.DoesNotExist:
+            return JsonResponse(
+                {"message": "Invalid state abbreviation"},
+                status=400,
+            )
+        photo = grab_image(content["city"], content["state"])
+        content.update(photo)
         location = Location.objects.create(**content)
         return JsonResponse(
             location,
@@ -224,81 +114,11 @@ def api_list_locations(request):
         )
 
 
-def api_list_locations(request):
-    """
-    Lists the location names and the link to the location.
-
-    Returns a dictionary with a single key "locations" which
-    is a list of location names and URLS. Each entry in the list
-    is a dictionary that contains the name of the location and
-    the link to the location's information.
-
-    {
-        "locations": [
-            {
-                "name": location's name,
-                "href": URL to the location,
-            },
-            ...
-        ]
-    }
-    """
-
-    # response = []
-    locations = Location.objects.all()
-    return JsonResponse(
-        {"locations": locations},
-        encoder=LocationListEncoder,
-    )
-    # for location in locations:
-    #     response.append(
-    #         {
-    #             "name": location.name,
-    #             "href": location.get_api_url(),
-    #         }
-    # #     )
-    # return JsonResponse({"locations": response})
-
-
-    # locations = [
-    #     {
-    #         "name": location.name,
-    #         "href": location.get_api_url(),
-    #     }
-    #     for location in Location.objects.all()
-    # ]
-    # return JsonResponse({"locations": locations})
-
-
 @require_http_methods(["GET", "PUT", "DELETE"])
 def api_show_location(request, id):
-    """
-    Returns the details for the Location model specified
-    by the id parameter.
-
-    This should return a dictionary with the name, city,
-    room count, created, updated, and state abbreviation.
-
-    {
-        "name": location's name,
-        "city": location's city,
-        "room_count": the number of rooms available,
-        "created": the date/time when the record was created,
-        "updated": the date/time when the record was updated,
-        "state": the two-letter abbreviation for the state,
-    }
-    """
     if request.method == "GET":
         location = Location.objects.get(id=id)
         return JsonResponse(
-            # {
-            #     "name": location.name,
-            #     "city": location.city,
-            #     "room_count": location.room_count,
-            #     "created": location.created,
-            #     "updated": location.updated,
-            #     "state": location.state.abbreviation,
-            # }
             location,
             safe=False,
             encoder=LocationDetailEncoder,

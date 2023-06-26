@@ -48,8 +48,6 @@ class ModelEncoder(DateEncoder, QuerySetEncoder, JSONEncoder):
             d.update(self.get_extra_data(o))
             return d
         else:
-            if hasattr(o, 'as_dict'):
-                return o.as_dict()
             return super().default(o)
 
     def get_extra_data(self, o):
