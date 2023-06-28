@@ -1,10 +1,22 @@
 from django.http import JsonResponse
-from .models import Conference, Location, State
-from common.json import ModelEncoder
-from django.views.decorators.http import require_http_methods
-import json
 
-from .acls import grab_image, grab_coordinates, grab_weather
+from .models import Conference, Location
+
+from common.json import ModelEncoder
+# from json import JSONEncoder
+
+
+#move this to json in common
+# class ModelEncoder(JSONEncoder):
+#     """
+#     Create modelencoder for definition default
+#     """
+#     def default(self, o):
+#         d = {}
+#         for property in self.properties:
+#             value = getattr(o, property)
+#             d[property] = value
+#         return d
 
 class ConferenceListEncoder(ModelEncoder):
     model = Conference
@@ -86,62 +98,79 @@ def api_show_conference(request, id):
         count, _ = Conference.objects.filter(id=id)
 
 
-@require_http_methods(["GET", "POST"])
 def api_list_locations(request):
-    if request.method == "GET":
-        locations = Location.objects.all()
-        return JsonResponse(
-            {"locations": locations},
-            encoder=LocationListEncoder,
-        )
-    else:
-        content = json.loads(request.body)
-        try:
-            state = State.objects.get(abbreviation=content["state"])
-            content["state"] = state
-        except State.DoesNotExist:
-            return JsonResponse(
-                {"message": "Invalid state abbreviation"},
-                status=400,
-            )
-        photo = grab_image(content["city"], content["state"])
-        content.update(photo)
-        location = Location.objects.create(**content)
-        return JsonResponse(
-            location,
-            encoder=LocationDetailEncoder,
-            safe=False,
-        )
+    """
+    Lists the location names and the link to the location.
+
+    Returns a dictionary with a single key "locations" which
+    is a list of location names and URLS. Each entry in the list
+    is a dictionary that contains the name of the location and
+    the link to the location's information.
+
+    {
+        "locations": [
+            {
+                "name": location's name,
+                "href": URL to the location,
+            },
+            ...
+        ]
+    }
+    """
+
+    # response = []
+    locations = Location.objects.all()
+    return JsonResponse(
+        {"locations": locations},
+        encoder=LocationListEncoder,
+    )
+    # for location in locations:
+    #     response.append(
+    #         {
+    #             "name": location.name,
+    #             "href": location.get_api_url(),
+    #         }
+    # #     )
+    # return JsonResponse({"locations": response})
 
 
-@require_http_methods(["GET", "PUT", "DELETE"])
+    # locations = [
+    #     {
+    #         "name": location.name,
+    #         "href": location.get_api_url(),
+    #     }
+    #     for location in Location.objects.all()
+    # ]
+    # return JsonResponse({"locations": locations})
+
 def api_show_location(request, id):
-    if request.method == "GET":
-        location = Location.objects.get(id=id)
-        return JsonResponse(
-            location,
-            safe=False,
-            encoder=LocationDetailEncoder,
-        )
-    elif request.method == "DELETE":
-        count, _ = Location.objects.filter(id=id).delete()
-        return JsonResponse({"deleted": count > 0})
-    else:
-        content = json.loads(request.body)
-        try:
-            if "state" in content:
-                state = State.objects.get(abbreviation=content["state"])
-                content["state"] = state
-        except State.DoesNotExist:
-            return JsonResponse(
-                {"message": "Invalid state abbreviation"},
-                status=400,
-            )
-        Location.objects.filter(id=id).update(**content)
+    """
+    Returns the details for the Location model specified
+    by the id parameter.
 
-        location = Location.objects.get(id=id)
-        return JsonResponse(
-            location,
-            encoder=LocationDetailEncoder,
-            safe=False,
-        )
+    This should return a dictionary with the name, city,
+    room count, created, updated, and state abbreviation.
+
+    {
+        "name": location's name,
+        "city": location's city,
+        "room_count": the number of rooms available,
+        "created": the date/time when the record was created,
+        "updated": the date/time when the record was updated,
+        "state": the two-letter abbreviation for the state,
+    }
+    """
+    location = Location.objects.get(id=id)
+    return JsonResponse(
+        # {
+        #     "name": location.name,
+        #     "city": location.city,
+        #     "room_count": location.room_count,
+        #     "created": location.created,
+        #     "updated": location.updated,
+        #     "state": location.state.abbreviation,
+        # }
+        location,
+        safe=False,
+        encoder=LocationDetailEncoder,
+    )
