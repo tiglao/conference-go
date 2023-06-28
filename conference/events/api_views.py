@@ -56,12 +56,23 @@ class ConferenceDetailEncoder(ModelEncoder):
 #             d[property] = value
 #         return d
 
+class LocationListEncoder(ModelEncoder):
+    model = Location
+    properties = ["name"]
+
 class LocationDetailEncoder(ModelEncoder):
     """
     add model type to use common json file
     """
     model = Location
-    properties = ["name", "city"]
+    properties = [
+        "name",
+        "city",
+        "room_count",
+        "created",
+        "updated",
+        # "state",
+    ]
 
 # class LocationDetailEncoder(JSONEncoder):
 #     properties = ["name", "city"]
@@ -72,8 +83,6 @@ class LocationDetailEncoder(ModelEncoder):
 #             value = getattr(location, property)
 #             d[property] = value
 #         return d
-
-
 
 
 def api_list_conferences(request):
@@ -116,6 +125,12 @@ def api_list_conferences(request):
 
 
 def api_show_conference(request, id):
+    conference = Conference.objects.get(id=id)
+    return JsonResponse(
+                conference,
+        safe=False,
+        encoder=ConferenceDetailEncoder,
+    )
     """
     Returns the details for the Conference model specified
     by the id parameter.
@@ -143,8 +158,7 @@ def api_show_conference(request, id):
 
     #use safe is false because you're not using a dictionary
 
-    conference = Conference.objects.get(id=id)
-    return JsonResponse(
+
         # {
         #     "name": conference.name,
         #     "starts": conference.starts,
@@ -159,10 +173,7 @@ def api_show_conference(request, id):
         #         "href": conference.location.get_api_url(),
         #     },
         # }
-        conference,
-        safe=False,
-        encoder=ConferenceDetailEncoder,
-    )
+
 
 #https://docs.python.org/3/library/json.html json encoder
 
@@ -188,16 +199,24 @@ def api_list_locations(request):
     }
     """
 
-    response = []
+#2
     locations = Location.objects.all()
-    for location in locations:
-        response.append(
-            {
-                "name": location.name,
-                "href": location.get_api_url(),
-            }
-        )
-    return JsonResponse({"locations": response})
+    return JsonResponse(
+        {"locations": locations},
+        encoder=LocationListEncoder,
+    )
+
+#1
+    # response = []
+    # locations = Location.objects.all()
+    # for location in locations:
+    #     response.append(
+    #         {
+    #             "name": location.name,
+    #             "href": location.get_api_url(),
+    #         }
+    #     )
+    # return JsonResponse({"locations": response})
 
 
     # locations = [
