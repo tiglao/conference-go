@@ -1,7 +1,26 @@
 from django.http import JsonResponse
-
 from .models import Presentation
+from common.json import ModelEncoder
 
+class PresentationListEncoder(ModelEncoder):
+    model = Presentation
+    properties = ["title"]
+    # properties = ["name"]
+    #AttributeError at /api/conferences/1/presentations/
+#'Presentation' object has no attribute 'name'
+
+
+
+class PresentationDetailEncoder(ModelEncoder):
+    model = Presentation
+    properties = [
+        "presenter_name",
+        "company_name",
+        "presenter_email",
+        "title",
+        "synopsis",
+        "created",
+    ]
 
 def api_list_presentations(request, conference_id):
     """
@@ -25,6 +44,11 @@ def api_list_presentations(request, conference_id):
         ]
     }
     """
+    presentations = Presentation.objects.filter(conference=conference_id)
+    return JsonResponse(
+        {"presentations": presentations}, encoder=PresentationListEncoder,
+    )
+
     # response = []
     # presentations = Presentation.objects.filter(conference=conference_id)
     # for presentation in presentations:
@@ -37,15 +61,15 @@ def api_list_presentations(request, conference_id):
     #     )
     # return JsonResponse({"presentations": response})
 
-    presentations = [
-        {
-            "title": p.title,
-            "status": p.status.name,
-            "href": p.get_api_url(),
-        }
-        for p in Presentation.objects.filter(conference=conference_id)
-    ]
-    return JsonResponse({"presentations": presentations})
+    # presentations = [
+    #     {
+    #         "title": p.title,
+    #         "status": p.status.name,
+    #         "href": p.get_api_url(),
+    #     }
+    #     for p in Presentation.objects.filter(conference=conference_id)
+    # ]
+    # return JsonResponse({"presentations": presentations})
 
 
 
@@ -76,17 +100,20 @@ def api_show_presentation(request, id):
     """
     presentation = Presentation.objects.get(id=id)
     return JsonResponse(
-        {
-            "presenter_name": presentation.presenter_name,
-            "company_name": presentation.company_name,
-            "presenter_email": presentation.presenter_email,
-            "title": presentation.title,
-            "synopsis": presentation.synopsis,
-            "created": presentation.created,
-            "status": presentation.status.name,
-            "conference": {
-                "name": presentation.conference.name,
-                "href": presentation.conference.get_api_url(),
-            }
-        }
+        # {
+        #     "presenter_name": presentation.presenter_name,
+        #     "company_name": presentation.company_name,
+        #     "presenter_email": presentation.presenter_email,
+        #     "title": presentation.title,
+        #     "synopsis": presentation.synopsis,
+        #     "created": presentation.created,
+        #     "status": presentation.status.name,
+        #     "conference": {
+        #         "name": presentation.conference.name,
+        #         "href": presentation.conference.get_api_url(),
+        #     }
+        # }
+        presentation,
+        encoder=PresentationDetailEncoder,
+        safe=False,
     )
