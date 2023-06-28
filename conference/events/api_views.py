@@ -18,25 +18,6 @@ from common.json import ModelEncoder
 #             d[property] = value
 #         return d
 
-class ConferenceListEncoder(ModelEncoder):
-    model = Conference
-    properties = ["name"]
-
-class ConferenceDetailEncoder(ModelEncoder):
-    """
-    add model type to use common json file
-    """
-    model = Conference
-    properties = [
-        "name",
-        "description",
-        "max_presentations",
-        "max_attendees",
-        "starts",
-        "ends",
-        "created",
-        "updated",
-    ]
 
 
 # class ConferenceDetailEncoder(JSONEncoder):
@@ -60,6 +41,7 @@ class LocationListEncoder(ModelEncoder):
     model = Location
     properties = ["name"]
 
+
 class LocationDetailEncoder(ModelEncoder):
     """
     add model type to use common json file
@@ -71,8 +53,10 @@ class LocationDetailEncoder(ModelEncoder):
         "room_count",
         "created",
         "updated",
-        # "state",
     ]
+
+    def get_extra_data(self, o):
+        return { "state": o.state.abbreviation }
 
 # class LocationDetailEncoder(JSONEncoder):
 #     properties = ["name", "city"]
@@ -84,8 +68,41 @@ class LocationDetailEncoder(ModelEncoder):
 #             d[property] = value
 #         return d
 
+class ConferenceListEncoder(ModelEncoder):
+    model = Conference
+    properties = ["name"]
+
+
+class ConferenceDetailEncoder(ModelEncoder):
+    """
+    add model type to use common json file
+    """
+    model = Conference
+    properties = [
+        "name",
+        "description",
+        "max_presentations",
+        "max_attendees",
+        "starts",
+        "ends",
+        "created",
+        "updated",
+        "location",
+    ]
+    encoders = {
+        "location": LocationListEncoder(),
+    }
+
 
 def api_list_conferences(request):
+    conferences = Conference.objects.all()
+    return JsonResponse(
+        {"conferences": conferences},
+        encoder=ConferenceListEncoder,
+    )
+
+
+# def api_list_conferences(request):
     """
     Lists the conference names and the link to the conference.
 
@@ -105,12 +122,6 @@ def api_list_conferences(request):
     }
     """
     #change when using model encoder
-    conferences = Conference.objects.all()
-    return JsonResponse(
-        {"conferences": conferences},
-        encoder=ConferenceListEncoder,
-    )
-
 
     # response = []
     # conferences = Conference.objects.all()
@@ -127,7 +138,7 @@ def api_list_conferences(request):
 def api_show_conference(request, id):
     conference = Conference.objects.get(id=id)
     return JsonResponse(
-                conference,
+        conference,
         safe=False,
         encoder=ConferenceDetailEncoder,
     )
@@ -178,8 +189,16 @@ def api_show_conference(request, id):
 #https://docs.python.org/3/library/json.html json encoder
 
 
-
+#2
 def api_list_locations(request):
+    locations = Location.objects.all()
+    return JsonResponse(
+        {"locations": locations},
+        encoder=LocationListEncoder,
+    )
+
+#1
+
     """
     Lists the location names and the link to the location.
 
@@ -198,15 +217,6 @@ def api_list_locations(request):
         ]
     }
     """
-
-#2
-    locations = Location.objects.all()
-    return JsonResponse(
-        {"locations": locations},
-        encoder=LocationListEncoder,
-    )
-
-#1
     # response = []
     # locations = Location.objects.all()
     # for location in locations:
@@ -228,7 +238,16 @@ def api_list_locations(request):
     # ]
     # return JsonResponse({"locations": locations})
 
+#2
 def api_show_location(request, id):
+    location = Location.objects.get(id=id)
+    return JsonResponse(
+        location,
+        safe=False,
+        encoder=LocationDetailEncoder,
+    )
+
+#1
     """
     Returns the details for the Location model specified
     by the id parameter.
@@ -245,8 +264,7 @@ def api_show_location(request, id):
         "state": the two-letter abbreviation for the state,
     }
     """
-    location = Location.objects.get(id=id)
-    return JsonResponse(
+
         # {
         #     "name": location.name,
         #     "city": location.city,
@@ -255,7 +273,3 @@ def api_show_location(request, id):
         #     "updated": location.updated,
         #     "state": location.state.abbreviation,
         # }
-        location,
-        safe=False,
-        encoder=LocationDetailEncoder,
-    )
