@@ -53,7 +53,6 @@ def api_list_attendees(request, conference_id):
         )
 
 
-#UPDATE DOES NOT WORK. NOT SURE HOW TO FIX
 @require_http_methods(["DELETE", "GET", "PUT"])
 def api_show_attendee(request, id):
     if request.method == "GET":
