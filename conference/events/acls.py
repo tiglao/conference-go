@@ -21,7 +21,31 @@ def get_photo(city, state):
         return {"picture_url": None}
 
 
-#function 2:
-#request to use Open Weather API
 def get_weather_data(city, state):
-    pass
+    geocache_params = {
+        "q": f"{city},{state},US",
+        "appid": OPEN_WEATHER_API_KEY,
+        "limit": 1,
+    }
+    geocache_api_url = "http://api.openweathermap.org/geo/1.0/direct"
+    response = requests.get(geocache_api_url, params=geocache_params)
+    geocache_content = json.loads(response.content)
+    lat = geocache_content[0]["lat"]
+    lon = geocache_content[0]["lon"]
+    params = {
+        "lat": lat,
+        "lon": lon,
+        "appid": OPEN_WEATHER_API_KEY
+    }
+    url = "https://api.openweathermap.org/data/2.5/weather"
+    response = requests.get(url, params=params)
+    content = json.loads(response.content)
+    temp = content["main"]["temp"]
+    description = content["weather"][0]["description"]
+    try:
+        return {
+            "temp": temp,
+            "description": description,
+        }
+    except (KeyError, ValueError):
+        return {"weather": None}
