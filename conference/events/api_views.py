@@ -172,6 +172,7 @@ def api_show_location(request, id):
     else:
         content = json.loads(request.body)
         try:
+
             if "state" in content:
                 state = State.objects.get(abbreviation=content["state"])
                 content["state"] = state
