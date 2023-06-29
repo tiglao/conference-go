@@ -3,6 +3,7 @@ from django.views.decorators.http import require_http_methods
 import json
 
 from .models import Conference, Location, State
+from .acls import get_photo
 from common.json import ModelEncoder
 
 
@@ -19,6 +20,7 @@ class LocationDetailEncoder(ModelEncoder):
         "room_count",
         "created",
         "updated",
+        "picture_url"
     ]
 
     def get_extra_data(self, o):
@@ -31,9 +33,6 @@ class ConferenceListEncoder(ModelEncoder):
 
 
 class ConferenceDetailEncoder(ModelEncoder):
-    """
-    add model type to use common json file
-    """
     model = Conference
     properties = [
         "name",
@@ -49,6 +48,7 @@ class ConferenceDetailEncoder(ModelEncoder):
     encoders = {
         "location": LocationListEncoder(),
     }
+
 
 @require_http_methods(["GET", "POST"])
 def api_list_conferences(request):
@@ -109,31 +109,10 @@ def api_show_conference(request, id):
             encoder=ConferenceDetailEncoder,
         )
 
-        # content = json.loads(request.body)
-        # try:
-        #     if "location" in content:
-        #         location = Location.objects.get(id=content["location"])
-        #         content["location"] = location
-        # except Location.DoesNotExist:
-        #     return JsonResponse(
-        #         {"message": "Invalid location ID"},
-        #         status=400,
-        #     )
-
-        # Conference.objects.filter(id=id).update(**content)
-        # print(content)
-        # conference = Conference.objects.create(id=id)
-        # print("what is this", conference)
-        # return JsonResponse(
-        #     conference,
-        #     encoder=ConferenceDetailEncoder,
-        #     safe=False,
-        # )
-
 
 @require_http_methods(["GET", "POST"])
 def api_list_locations(request):
-    if request.method=="GET":
+    if request.method == "GET":
         locations = Location.objects.all()
         return JsonResponse(
             {"locations": locations},
@@ -149,7 +128,11 @@ def api_list_locations(request):
                 {"message": "Invalid state abbreviation"},
                 status=400,
             )
+        pulled_photo = get_photo(content["city"], content["state"])
+        content.update(pulled_photo)
         location = Location.objects.create(**content)
+        print("content:", content)
+        print("location:", location)
         return JsonResponse(
             location,
             encoder=LocationDetailEncoder,
